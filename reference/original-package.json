@@ -1,0 +1,14 @@
+{
+  "name": "dropzone",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Team battle royale — single HTML client + Node WebSocket relay",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
