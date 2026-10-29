@@ -54,16 +54,15 @@ elRedPlayers.value = settings.redPlayers; elRedPlayersVal.textContent = settings
 document.querySelectorAll('.teamBtn').forEach(b=>{
   b.classList.toggle('on', parseInt(b.dataset.team) === settings.playerTeam);
   b.addEventListener('click', ()=>{
-    document.querySelectorAll('.teamBtn').forEach(x=>x.classList.remove('on'));
-    b.classList.add('on');
-    settings.playerTeam = parseInt(b.dataset.team);
+    selectTeam(parseInt(b.dataset.team));
     saveSettings();
+    if(net.connected) sendNet({t:'team', team:settings.playerTeam});
   });
 });
-elBlueBots.addEventListener('input', ()=>{ settings.blueBots = parseInt(elBlueBots.value); elBlueBotsVal.textContent = elBlueBots.value; saveSettings(); });
-elRedBots.addEventListener('input', ()=>{ settings.redBots = parseInt(elRedBots.value); elRedBotsVal.textContent = elRedBots.value; saveSettings(); });
-elBluePlayers.addEventListener('input', ()=>{ settings.bluePlayers = parseInt(elBluePlayers.value); elBluePlayersVal.textContent = elBluePlayers.value; saveSettings(); });
-elRedPlayers.addEventListener('input', ()=>{ settings.redPlayers = parseInt(elRedPlayers.value); elRedPlayersVal.textContent = elRedPlayers.value; saveSettings(); });
+elBlueBots.addEventListener('input', ()=>{ settings.blueBots = parseInt(elBlueBots.value); elBlueBotsVal.textContent = elBlueBots.value; saveSettings(); if(net.connected&&net.isHost) sendNet({t:'roomSettings',settings:roomSettings()}); });
+elRedBots.addEventListener('input', ()=>{ settings.redBots = parseInt(elRedBots.value); elRedBotsVal.textContent = elRedBots.value; saveSettings(); if(net.connected&&net.isHost) sendNet({t:'roomSettings',settings:roomSettings()}); });
+elBluePlayers.addEventListener('input', ()=>{ settings.bluePlayers = parseInt(elBluePlayers.value); elBluePlayersVal.textContent = elBluePlayers.value; saveSettings(); if(net.connected&&net.isHost) sendNet({t:'roomSettings',settings:roomSettings()}); });
+elRedPlayers.addEventListener('input', ()=>{ settings.redPlayers = parseInt(elRedPlayers.value); elRedPlayersVal.textContent = elRedPlayers.value; saveSettings(); if(net.connected&&net.isHost) sendNet({t:'roomSettings',settings:roomSettings()}); });
 elRoom.addEventListener('input', ()=>{ elRoom.value = elRoom.value.toUpperCase().replace(/[^A-Z0-9]/g,''); });
 
 /* ══════ AUDIO ══════ */
@@ -353,9 +352,16 @@ function makeBuilding(cx,cz,w,d){
         const step=(z1-z0)/20;
         addBox('wood',1.6,.17,step+.025,stairX,y+(i+1)*H/20-.085,z0+(i+.5)*step,false);
       }
-      const rail=new THREE.BoxGeometry(.045,.045,Math.hypot(z1-z0,H));
-      rail.rotateX(-Math.atan2(H,z1-z0));rail.translate(stairX-.85,y+H/2+.85,(z0+z1)/2);pushGeo('metal',rail);
-      for(let i=0;i<5;i++) addBox('metal',.035,.85,.035,stairX-.85,y+i*H/4+.425,z0+i*(z1-z0)/4,false);
+      // Both stair edges have visible rails and continuous invisible collision barriers.
+      // The barriers follow the ramp's full height so the player cannot slip off mid-climb.
+      for(const side of [-1,1]){
+        const railX=stairX+side*.85;
+        const rail=new THREE.BoxGeometry(.045,.045,Math.hypot(z1-z0,H));
+        rail.rotateX(-Math.atan2(H,z1-z0));
+        rail.translate(railX,y+H/2+.85,(z0+z1)/2);pushGeo('metal',rail);
+        for(let i=0;i<5;i++) addBox('metal',.035,.85,.035,railX,y+i*H/4+.425,z0+i*(z1-z0)/4,false);
+        addCollider(railX-.055,z0,railX+.055,z1,y-.1,y+H+1.1);
+      }
     }
     addBox('crate',.85,.85,.85,cx-w*.22,y+.425,cz+d*.22);
   }
@@ -529,7 +535,7 @@ function spawnBot(x,z,team){
     hp:100, alive:true,
     state:'roam',
     target:new THREE.Vector3(rand(-HALF*0.7,HALF*0.7),0,rand(-HALF*0.7,HALF*0.7)),
-    retarget:0, fireAt:0, losTimer:0, hasLOS:false,
+    retarget:0, fireAt:0, losTimer:0, hasLOS:false, losTargetKey:null,
     name:(team===0?'BLUE_':'RED_')+randi(100,999),
     speed: rand(2.6,4.2), team,
   };
@@ -896,8 +902,49 @@ const net = {
   connected: false, ws: null, id: null, isHost: false, room: null,
   remotePlayers: new Map(), sendTimer: 0, name: 'player',
   hasHostData: false,     // set true on first hostBots packet (guests only)
+  started: false,
 };
 function sendNet(obj){ if(net.ws && net.ws.readyState === 1) net.ws.send(JSON.stringify(obj)); }
+function roomSettings(){ return {blueBots:settings.blueBots,redBots:settings.redBots,bluePlayers:settings.bluePlayers,redPlayers:settings.redPlayers}; }
+function setRoomControlsVisible(active){
+  $('roomPanel').classList.toggle('on',active);
+  $('createBtn').style.display=active?'none':'';
+  $('joinBtn').style.display=active?'none':'';
+  $('offlineBtn').style.display=active?'none':'';
+  $('setRoom').disabled=active;
+  for(const id of ['setBlueBots','setRedBots','setBluePlayers','setRedPlayers']) $(id).disabled=active&&!net.isHost;
+  document.querySelectorAll('.teamBtn').forEach(b=>b.disabled=active&&net.started);
+}
+function selectTeam(team){
+  settings.playerTeam=team===1?1:0;
+  player.team=settings.playerTeam;
+  document.querySelectorAll('.teamBtn').forEach(b=>b.classList.toggle('on',Number(b.dataset.team)===settings.playerTeam));
+}
+function renderRoom(msg={}){
+  if(msg.code) $('roomCodeDisplay').textContent=msg.code;
+  const settingsIn=msg.settings||{};
+  for(const key of ['blueBots','redBots','bluePlayers','redPlayers']) if(settingsIn[key]!=null){
+    settings[key]=Math.max(0,Math.min(key.toLowerCase().includes('players')?8:25,Number(settingsIn[key])||0));
+    const el=$('set'+key[0].toUpperCase()+key.slice(1)); const val=$(el.id+'Val'); el.value=settings[key]; val.textContent=settings[key];
+  }
+  const players=Array.isArray(msg.players)?msg.players:Object.values(msg.players||{});
+  const me=players.find(p=>p.id===net.id);
+  if(me){ selectTeam(me.team); net.isHost=!!me.host; }
+  for(const id of ['setBlueBots','setRedBots','setBluePlayers','setRedPlayers']) $(id).disabled=!net.isHost;
+  const teamNames=['blue','red'];
+  for(let team=0;team<2;team++){
+    const key=teamNames[team], list=players.filter(p=>Number(p.team)===team), capacity=Number(settings[team===0?'bluePlayers':'redPlayers'])||1;
+    const root=$(key+'Roster'); root.innerHTML='';
+    for(const p of list){ const row=document.createElement('div'); row.className='roster-slot'; row.textContent=(p.name||'PLAYER')+(p.host?' · HOST':''); root.appendChild(row); }
+    for(let i=list.length;i<capacity;i++){const row=document.createElement('div');row.className='roster-slot empty';row.textContent='Player slot '+(i+1);root.appendChild(row);}
+    const bots=Number(settings[team===0?'blueBots':'redBots'])||0;
+    for(let i=0;i<bots;i++){const row=document.createElement('div');row.className='roster-slot bot';row.textContent='AI BOT '+String(i+1).padStart(2,'0');root.appendChild(row);}
+    const h=document.querySelector('.team-roster.'+key+' h3'); if(h) h.textContent=(team===0?'BLUE':'RED')+' TEAM · '+list.length+'/'+capacity+' PLAYERS · '+bots+' BOTS';
+  }
+  $('roomStatus').textContent=net.isHost?'HOST CONTROLS TEAM SIZES · START WHEN READY':'CONNECTED · WAITING FOR HOST TO START';
+  $('roomStartBtn').style.display=net.isHost?'block':'none';
+  $('roomWait').textContent=net.isHost?'Room is open. Share the code, then start the match.':'Stay here until the host starts the match.';
+}
 function connectAndCreate(){
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
   const ws = new WebSocket(proto + '//' + location.host + '/ws');
@@ -932,8 +979,8 @@ function handleNetMessage(ev){
         if(msg.settings.bluePlayers != null) settings.bluePlayers = msg.settings.bluePlayers;
         if(msg.settings.redPlayers != null) settings.redPlayers = msg.settings.redPlayers;
       }
-      elLobbyMsg.textContent = 'ROOM ' + msg.code + ' — SHARE THIS CODE';
-      setTimeout(()=>{ startGame(); sendNet({t:'start'}); }, 600);
+      elLobbyMsg.textContent = 'ROOM CREATED — SHARE THE CODE';
+      setRoomControlsVisible(true); renderRoom({code:msg.code,settings:msg.settings,players:msg.players||[]});
       break;
     case 'joined':
       net.connected = true; net.id = msg.id; net.isHost = (msg.hostId === msg.id); net.room = msg.code;
@@ -944,10 +991,12 @@ function handleNetMessage(ev){
         if(msg.settings.redPlayers != null) settings.redPlayers = msg.settings.redPlayers;
       }
       player.team = settings.playerTeam;
-      elLobbyMsg.textContent = 'JOINED ' + msg.code + ' — WAITING FOR HOST';
+      elLobbyMsg.textContent = 'JOINED ROOM — WAITING FOR HOST';
+      setRoomControlsVisible(true); renderRoom({code:msg.code,settings:msg.settings,players:msg.players||[]});
       if(msg.players) syncPlayers(Object.values(msg.players));
       break;
     case 'started':
+  net.started = true;
   if(msg.settings){
     if(msg.settings.blueBots != null) settings.blueBots = msg.settings.blueBots;
     if(msg.settings.redBots != null) settings.redBots = msg.settings.redBots;
@@ -958,6 +1007,7 @@ function handleNetMessage(ev){
   setTimeout(()=>startGame(), 250);
   break;
     case 'players': syncPlayers(msg.d); break;
+    case 'roomUpdate': renderRoom(msg); break;
 case 'playerJoin':
   // host sees a new guest — shove bots at them right now (works even while paused)
   if(net.isHost && net.connected){
@@ -1002,9 +1052,11 @@ case 'playerJoin':
     case 'hostChange':
       net.isHost = (msg.id === net.id);
       if(net.isHost) showMsg('YOU ARE HOST', '', 2000);
+      setRoomControlsVisible(true);
       break;
     case 'error':
       elLobbyMsg.textContent = (msg.message||'ERROR').toUpperCase();
+      if(msg.players) renderRoom(msg);
       break;
   }
 }
@@ -1622,14 +1674,27 @@ function updateBots(dt){
     if(!target) continue;
     const dx = target.x - b.pos.x, dz = target.z - b.pos.z;
 
+    // LOS must be associated with the current target; otherwise a bot can retain
+    // visibility from a previous target and shoot through a newly intervening wall.
+    const losTargetKey = `${targetKind}:${targetId}`;
+    if(b.losTargetKey !== losTargetKey){
+      b.losTargetKey = losTargetKey;
+      b.losTimer = 0;
+      b.hasLOS = false;
+    }
+    const hasClearShot = () => {
+      if(targetD >= 90) return false;
+      const ox=b.pos.x, oy=b.pos.y+1.4, oz=b.pos.z;
+      const vx=target.x-ox, vy=(target.y+1.3)-oy, vz=target.z-oz;
+      const rayDist=Math.hypot(vx,vy,vz);
+      if(rayDist < 0.01) return true;
+      const dir=new THREE.Vector3(vx/rayDist,vy/rayDist,vz/rayDist);
+      return castWorldDistance(new THREE.Vector3(ox,oy,oz),dir,rayDist) >= rayDist-0.75;
+    };
     b.losTimer -= dt;
     if(b.losTimer <= 0){
-      b.losTimer = 0.35;
-      if(targetD < 90){
-        const o = new THREE.Vector3(b.pos.x, b.pos.y+1.4, b.pos.z);
-        const dir = new THREE.Vector3(target.x-b.pos.x, (target.y+1.3)-(b.pos.y+1.4), target.z-b.pos.z).normalize();
-        b.hasLOS = castWorldDistance(o, dir, targetD) >= targetD - 0.6;
-      } else b.hasLOS = false;
+      b.losTimer = 0.25;
+      b.hasLOS = hasClearShot();
     }
 
     if(b.hasLOS && targetD < 70){ b.state = 'engage'; }
@@ -1637,7 +1702,7 @@ function updateBots(dt){
 
     if(b.state==='engage'){
       b.obj.rotation.y = lerp(b.obj.rotation.y, Math.atan2(dx, dz), clamp(dt*6,0,1));
-      if(now > b.fireAt && b.hasLOS){
+      if(now > b.fireAt && b.hasLOS && hasClearShot()){
         b.fireAt = now + rand(420, 900);
         const ox=b.pos.x, oy=b.pos.y+1.35, oz=b.pos.z;
         Audio_.shot('ar', .65, b.pos);
@@ -1670,6 +1735,9 @@ function updateBots(dt){
             }
           }
         }
+      } else if(now > b.fireAt && b.hasLOS){
+        b.hasLOS = false;
+        b.losTimer = 0.1;
       }
     } else {
       if(targetD > 0.5){
@@ -1836,6 +1904,8 @@ $('joinBtn').addEventListener('click', ()=>{
   connectAndJoin(code);
 });
 $('offlineBtn').addEventListener('click', ()=>{ Audio_.init(); startGame(); });
+$('roomStartBtn').addEventListener('click', ()=>{ if(net.isHost&&net.connected){ $('roomWait').textContent='Starting match…'; sendNet({t:'start'}); } });
+$('copyRoomBtn').addEventListener('click', async ()=>{ const code=$('roomCodeDisplay').textContent; const invite=location.origin+location.pathname+'?room='+encodeURIComponent(code); try{ await navigator.clipboard.writeText(invite); $('copyRoomBtn').textContent='COPIED'; setTimeout(()=>$('copyRoomBtn').textContent='COPY INVITE',1500); }catch{ $('roomWait').textContent='Room code: '+code+' — copy it manually.'; } });
 const urlRoom = new URLSearchParams(location.search).get('room');
 if(urlRoom) elRoom.value = urlRoom.toUpperCase();
 
@@ -1881,6 +1951,11 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden){mouseDown=
 addEventListener('message',event=>{
   if(event.origin!==location.origin||event.source!==parent||event.data?.source!=='erangel-lobby')return;
   const data=event.data;
+  if(data.type==='room-mode'&&!initialized){
+    gameSettings={...DEFAULT_SETTINGS,...data.settings};net.name=data.name||'GHOST_01';renderer.shadowMap.enabled=gameSettings.shadows;
+    importInventory(data.inventory||DEFAULT_INVENTORY);
+    $('start').style.display='flex'; $('lobbyMsg').textContent='CREATE A ROOM OR JOIN WITH A CODE';
+  }
   if(data.type==='initialize'&&!initialized){
     gameSettings={...DEFAULT_SETTINGS,...data.settings};training=data.dropzone==='TRAINING GROUNDS';
     settings.blueBots=training?0:data.mode==='SQUAD'?3:0;settings.redBots=training?0:data.mode==='SQUAD'?16:18;settings.playerTeam=0;

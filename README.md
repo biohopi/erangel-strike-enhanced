@@ -64,3 +64,22 @@ The smoke test covers lobby rendering, persistent loadouts, weapon preservation,
 Lobby and weapon catalog artwork were generated for this project. The animated `Soldier.glb` model is the Mixamo model distributed in the Three.js skeletal-animation examples; see https://threejs.org/examples/webgl_animation_skinning_blending.html and Mixamo's applicable asset terms. It is used as an embedded game asset, not offered as a standalone asset download. Barlow and Barlow Condensed are by Jeremy Tribby and distributed under the SIL Open Font License. Three.js is MIT licensed.
 
 The implementation is local to this project. It does not automatically push changes to the upstream GitHub repository.
+
+## Online multiplayer (local and deployed)
+
+The project now runs the web client and its WebSocket room server from the same Node.js service. The host creates a room, shares the six-character room code/invite, and controls Blue/Red player slots and bot counts before starting. Players choose a team and wait in the room roster until the host starts.
+
+### Run locally on Android / Termux or desktop
+
+Use two terminal sessions in the project directory:
+
+1. `npm install`
+2. Terminal A: `npm run server` (starts the WebSocket server on port 3000)
+3. Terminal B: `npm run dev -- --host 0.0.0.0` (starts Vite; `/ws` is proxied to port 3000)
+4. Open the Vite **Local** address on the same device. For friends on your Wi-Fi, use the Vite **Network** address if the network/firewall permits it; both devices must be able to reach the host device's server port 3000 as well, so if the proxy cannot be reached from another device, use the host computer's `http://HOST-LAN-IP:3000` address after running `npm run build`.
+
+### Deploy on Render
+
+The included `render.yaml` configures a Node web service. Render runs `npm ci && npm run build`, then `npm start`; the same HTTPS origin serves the site and secure WebSocket endpoint `/ws` (`wss://your-site.example/ws`). Do not deploy this multiplayer version as a static site because static hosting cannot run the WebSocket room server.
+
+Rooms are ephemeral and live in server memory; restarting/redeploying the service closes active rooms. This is a lightweight relay architecture, not authoritative anti-cheat networking.

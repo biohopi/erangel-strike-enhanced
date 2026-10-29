@@ -6,7 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "predev": "node scripts/build-game.mjs",
+    "prebuild": "node scripts/build-game.mjs",
+    "server": "node server.cjs",
+    "start": "node server.cjs"
   },
   "dependencies": {
     "clsx": "2.1.1",

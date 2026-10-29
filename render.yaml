@@ -1,7 +1,7 @@
 services:
   - type: web
     name: erangel-strike-enhanced
-    runtime: static
+    runtime: node
     buildCommand: npm ci && npm run build
-    staticPublishPath: dist
+    startCommand: npm start
     autoDeploy: true

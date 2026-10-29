@@ -11,6 +11,7 @@ const __dirname = path.dirname(__filename);
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss(), viteSingleFile()],
+  server: { proxy: { '/ws': { target: 'ws://127.0.0.1:3000', ws: true } } },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "src"),

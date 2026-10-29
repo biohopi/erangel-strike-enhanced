@@ -2987,3 +2987,24 @@ kbd {
 .app.in-match {
   min-height: 0;
 }
+
+.multiplayer-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 10px;
+  padding: 13px 18px;
+  border: 1px solid rgba(110, 201, 255, .45);
+  border-radius: 6px;
+  background: linear-gradient(110deg, rgba(35, 92, 130, .48), rgba(17, 28, 42, .9));
+  color: #d9f1ff;
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: border-color .2s, transform .2s, background .2s;
+}
+.multiplayer-button:hover { border-color: #6ec9ff; background: rgba(35, 92, 130, .65); }
+.multiplayer-button:active { transform: scale(.985); }

@@ -95,7 +95,23 @@
   #start{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 40%,#16212e,#070a0e);gap:14px;text-align:center;padding:20px;overflow-y:auto}
   #start h1{font-size:38px;letter-spacing:8px;font-weight:900;background:linear-gradient(90deg,#ffd54a,#ff7a3d);-webkit-background-clip:text;background-clip:text;color:transparent}
   #start .sub{font-size:11px;opacity:.55;letter-spacing:2px;margin-bottom:6px}
-  #lobby{display:flex;flex-direction:column;gap:8px;width:min(440px,94vw);background:rgba(0,0,0,.4);padding:16px;border-radius:12px;border:1px solid rgba(255,255,255,.1)}
+  #lobby{display:flex;flex-direction:column;gap:8px;width:min(520px,94vw);background:rgba(0,0,0,.4);padding:16px;border-radius:12px;border:1px solid rgba(255,255,255,.1)}
+  #roomPanel{display:none;flex-direction:column;gap:12px;border-top:1px solid rgba(255,255,255,.16);padding-top:14px;margin-top:8px;text-align:left}
+  #roomPanel.on{display:flex}
+  .room-heading{display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .room-code{font-size:22px;font-weight:900;letter-spacing:4px;color:#ffd54a}
+  .room-sub{font-size:10px;opacity:.65;letter-spacing:1.2px;margin-top:3px}
+  .room-mini-btn{padding:8px 10px;border:1px solid #52606e;border-radius:5px;background:#1c2733;color:#fff;font-size:10px;font-weight:800;letter-spacing:1px}
+  #roomRoster{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .team-roster{border:1px solid rgba(255,255,255,.13);border-radius:7px;padding:10px;min-width:0}
+  .team-roster h3{font-size:11px;letter-spacing:1.5px;margin-bottom:8px}
+  .team-roster.blue h3{color:#77bdff}.team-roster.red h3{color:#ff8585}
+  .roster-slot{display:flex;justify-content:space-between;gap:6px;padding:6px 7px;margin-top:4px;background:rgba(255,255,255,.055);border-radius:4px;font-size:10px;overflow-wrap:anywhere}
+  .roster-slot.empty{opacity:.4;border:1px dashed rgba(255,255,255,.15);background:transparent}
+  .roster-slot.bot{color:#ffdca1}
+  #roomStartBtn{width:100%;padding:13px;border:0;border-radius:5px;background:linear-gradient(90deg,#ffd54a,#ff8a3d);color:#111;font-weight:900;letter-spacing:2px}
+  #roomStartBtn:disabled{opacity:.35}
+  #roomWait{font-size:11px;opacity:.7;text-align:center;min-height:14px}
   .setting{display:flex;align-items:center;gap:10px;font-size:12px;font-weight:700;letter-spacing:1px}
   .setting label{width:120px;text-align:left;opacity:.85;font-size:11px}
   .setting input[type=range]{flex:1;accent-color:#ffd54a}
@@ -135,11 +151,21 @@
     <div class="setting"><label>YOUR TEAM</label><div class="teamPick"><button class="teamBtn on" data-team="0">BLUE</button><button class="teamBtn" data-team="1">RED</button></div></div>
     <div class="setting"><label>ROOM CODE</label><input type="text" id="setRoom" placeholder="AUTO" maxlength="6"></div>
     <div class="lobbyActions">
-      <button id="createBtn">CREATE & PLAY</button>
+      <button id="createBtn">CREATE ROOM</button>
       <button id="joinBtn">JOIN</button>
       <button id="offlineBtn">OFFLINE</button>
     </div>
     <div id="lobbyMsg"></div>
+    <div id="roomPanel">
+      <div class="room-heading"><div><div class="room-sub">ROOM CODE · SHARE WITH FRIENDS</div><div class="room-code" id="roomCodeDisplay">------</div></div><button class="room-mini-btn" id="copyRoomBtn">COPY INVITE</button></div>
+      <div class="room-sub" id="roomStatus">Waiting for teammates…</div>
+      <div id="roomRoster">
+        <section class="team-roster blue"><h3>BLUE TEAM</h3><div id="blueRoster"></div></section>
+        <section class="team-roster red"><h3>RED TEAM</h3><div id="redRoster"></div></section>
+      </div>
+      <button id="roomStartBtn">START MATCH</button>
+      <div id="roomWait"></div>
+    </div>
     <div id="lootLegend">
       <span><span class="dot" style="background:#ffb347"></span>WEAPON</span>
       <span><span class="dot" style="background:#6ec9ff"></span>AMMO</span>

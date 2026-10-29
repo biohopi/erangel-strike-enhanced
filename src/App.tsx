@@ -59,6 +59,7 @@ function App() {
   const [dropzone, setDropzone] = useState<Dropzone>("ERANGEL");
   const [mapDraft, setMapDraft] = useState<Dropzone>("ERANGEL");
   const [playing, setPlaying] = useState(false);
+  const [sessionMode, setSessionMode] = useState<"LOCAL" | "MULTIPLAYER">("LOCAL");
   const [deploying, setDeploying] = useState(false);
   const [toast, setToast] = useState("");
   const [guideTab, setGuideTab] = useState<
@@ -115,14 +116,11 @@ function App() {
       if (event.data.inventory) setInventory(event.data.inventory as Inventory);
       if (event.data.type === "ready") {
         setDeploying(false);
-        sendToGame({
-          type: "initialize",
-          inventory,
-          settings,
-          mode,
-          dropzone,
-          name,
-        });
+        if (sessionMode === "MULTIPLAYER") {
+          sendToGame({ type: "room-mode", inventory, settings, name });
+        } else {
+          sendToGame({ type: "initialize", inventory, settings, mode, dropzone, name });
+        }
       }
       if (event.data.type === "inventory-open") setPanel("loadout");
       if (event.data.type === "settings-open") setPanel("settings");
@@ -144,7 +142,7 @@ function App() {
     };
     addEventListener("message", handler);
     return () => removeEventListener("message", handler);
-  }, [inventory, settings, mode, dropzone, name, sendToGame, notify]);
+  }, [inventory, settings, mode, dropzone, name, sessionMode, sendToGame, notify]);
 
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
@@ -178,6 +176,12 @@ function App() {
     if (playing) sendToGame({ type: "pause" });
   };
   const deploy = () => {
+    setSessionMode("LOCAL");
+    setDeploying(true);
+    setPlaying(true);
+  };
+  const openMultiplayer = () => {
+    setSessionMode("MULTIPLAYER");
     setDeploying(true);
     setPlaying(true);
   };
@@ -454,6 +458,9 @@ function App() {
                       ? "ONE ISLAND. ONE SURVIVOR."
                       : "DROP TOGETHER. SURVIVE TOGETHER."}
                 </span>
+                <button className="multiplayer-button" onClick={openMultiplayer}>
+                  <UsersRound size={17} /> ONLINE ROOM <ArrowRight size={17} />
+                </button>
               </div>
             </motion.div>
           </main>
@@ -486,7 +493,7 @@ function App() {
           <header className="game-topbar">
             <Brand compact />
             <span className="game-session">
-              <Radio size={13} /> {dropzone} / {mode} / LOCAL SESSION
+              <Radio size={13} /> {dropzone} / {mode} / {sessionMode === "MULTIPLAYER" ? "ONLINE ROOM" : "LOCAL SESSION"}
             </span>
             <div>
               <button
