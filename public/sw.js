@@ -1,5 +1,5 @@
 const CACHE = 'erangel-strike-shell-v1';
-const CORE = ['/', '/index.html', '/manifest.webmanifest', '/favicon.svg', '/game/index.html', '/game/engine.js', '/game/hud.css', '/images/erangel-lobby.jpg', '/images/m416.jpg', '/images/kar98k.jpg'];
+const CORE = ['/', '/index.html', '/manifest.webmanifest', '/favicon.svg', '/game/index.html', '/game/engine.js', '/game/hud.css', '/images/erangel-lobby.jpg', '/images/m416.jpg', '/images/kar98k.jpg', '/offline.html'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(CORE)).then(() => self.skipWaiting()));
 });
@@ -23,7 +23,7 @@ self.addEventListener('fetch', event => {
       if (response.ok && (response.type === 'basic' || response.type === 'cors')) cache.put(req, response.clone());
       return response;
     } catch (error) {
-      if (req.mode === 'navigate') return (await cache.match('/index.html')) || Response.error();
+      if (req.mode === 'navigate') return (await cache.match('/offline.html')) || (await cache.match('/index.html')) || Response.error();
       return Response.error();
     }
   })());
