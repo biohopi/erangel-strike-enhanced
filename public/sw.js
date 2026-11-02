@@ -8,9 +8,12 @@ self.addEventListener('activate', event => {
 });
 self.addEventListener('fetch', event => {
   const req = event.request;
-  if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
+  if (req.method !== 'GET') return;
   const url = new URL(req.url);
-  if (url.pathname === '/ws' || url.pathname.startsWith('/api/')) return;
+  const sameOrigin = url.origin === self.location.origin;
+  const approvedModelHost = url.origin === 'https://threejs.org';
+  if (!sameOrigin && !approvedModelHost) return;
+  if (sameOrigin && (url.pathname === '/ws' || url.pathname.startsWith('/api/'))) return;
   event.respondWith((async () => {
     const cache = await caches.open(CACHE);
     const cached = await cache.match(req, {ignoreSearch:true});
