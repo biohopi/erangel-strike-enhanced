@@ -6,7 +6,7 @@ const { WebSocketServer } = require('ws');
 const PORT = Number(process.env.PORT || 3000);
 const DIST = path.join(__dirname, 'dist');
 const rooms = new Map();
-const MIME = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.css':'text/css; charset=utf-8', '.svg':'image/svg+xml', '.png':'image/png', '.jpg':'image/jpeg', '.jpeg':'image/jpeg', '.webp':'image/webp', '.woff2':'font/woff2', '.json':'application/json; charset=utf-8' };
+const MIME = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.css':'text/css; charset=utf-8', '.svg':'image/svg+xml', '.png':'image/png', '.jpg':'image/jpeg', '.jpeg':'image/jpeg', '.webp':'image/webp', '.woff2':'font/woff2', '.json':'application/json; charset=utf-8', '.webmanifest':'application/manifest+json; charset=utf-8' };
 
 const server = http.createServer((req, res) => {
   if (req.url === '/health') { res.writeHead(200, {'content-type':'text/plain; charset=utf-8'}); return res.end('ok'); }
