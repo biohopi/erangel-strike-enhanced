@@ -83,3 +83,12 @@ Use two terminal sessions in the project directory:
 The included `render.yaml` configures a Node web service. Render runs `npm ci && npm run build`, then `npm start`; the same HTTPS origin serves the site and secure WebSocket endpoint `/ws` (`wss://your-site.example/ws`). Do not deploy this multiplayer version as a static site because static hosting cannot run the WebSocket room server.
 
 Rooms are ephemeral and live in server memory; restarting/redeploying the service closes active rooms. This is a lightweight relay architecture, not authoritative anti-cheat networking.
+
+
+## Installable / offline mode
+
+- The app now registers a service worker and ships a web manifest for installation on supported mobile and desktop browsers.
+- The shell, compiled game, HUD, lobby artwork, and weapon artwork are cached after the first successful visit. Subsequent launches can open the game without a connection.
+- Offline play is local-only. Room creation, joining, and remote players require an active connection to the WebSocket server.
+- A project-local `public/images/soldier.glb` takes priority when supplied. If it is absent, the client attempts the public Three.js Soldier sample; if that request is unavailable (including offline first launch), the existing procedural operative is used.
+- The current Render resource for this repository is configured as a **static site**. Static hosting cannot run `server.cjs` or the `/ws` room server. The repo's `render.yaml` describes a Node web service, but the existing Render resource must be migrated/recreated as a web service before deployed online rooms can work. Local multiplayer can run with `npm run server`.
