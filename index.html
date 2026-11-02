@@ -8,11 +8,13 @@
       name="description"
       content="Erangel Strike. Gear up, prepare your loadout, and enter a playable tactical battleground with first- and third-person perspectives."
     />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>Erangel Strike | Every Drop. A New Story.</title>
   </head>
   <body>
     <div id="root"></div>
+    <script>if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(error => console.warn('Offline cache unavailable:', error)));</script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
