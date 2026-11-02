@@ -12,9 +12,13 @@ const server = http.createServer((req, res) => {
   if (req.url === '/health') { res.writeHead(200, {'content-type':'text/plain; charset=utf-8'}); return res.end('ok'); }
   let pathname;
   try { pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname); } catch { res.writeHead(400); return res.end('bad request'); }
-  let target = path.resolve(DIST, '.' + pathname);
-  if (!target.startsWith(DIST + path.sep) && target !== path.join(DIST, 'index.html')) { res.writeHead(403); return res.end('forbidden'); }
-  if (pathname === '/') target = path.join(DIST, 'index.html');
+  // Resolve the root URL to the built entry point before checking containment.
+  // Previously '/' resolved to DIST itself and was incorrectly rejected as forbidden.
+  const relativePath = pathname === '/' ? 'index.html' : '.' + pathname;
+  const target = path.resolve(DIST, relativePath);
+  if (target !== path.join(DIST, 'index.html') && !target.startsWith(DIST + path.sep)) {
+    res.writeHead(403); return res.end('forbidden');
+  }
   if (!fs.existsSync(target) || !fs.statSync(target).isFile()) {
     if (!path.extname(pathname)) target = path.join(DIST, 'index.html');
     else { res.writeHead(404); return res.end('not found'); }
