@@ -7,12 +7,23 @@ const waitingActors = new Set();
 const animatedActors = new Set();
 
 export const soldierReady = new Promise(resolve => {
-  new GLTFLoader().load('/images/soldier.glb', asset => {
+  const loader = new GLTFLoader();
+  const install = asset => {
     soldierAsset = asset;
     for (const actor of waitingActors) installModel(actor);
     waitingActors.clear();
     resolve(true);
-  }, undefined, error => { console.warn('Using fallback operative:', error); resolve(false); });
+  };
+  // Prefer a project-local, licensed model if one is added later. Fall back to
+  // the public Three.js Soldier sample; the procedural operative remains the
+  // offline-safe fallback when the model cannot be fetched.
+  loader.load('/images/soldier.glb', install, undefined, () => {
+    loader.load('https://threejs.org/examples/models/gltf/Soldier.glb', install,
+      undefined, error => {
+        console.warn('GLB unavailable; using procedural operative:', error);
+        resolve(false);
+      });
+  });
 });
 
 export function surfaceTexture(type) {
